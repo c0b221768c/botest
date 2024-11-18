@@ -1,0 +1,11 @@
+services:
+  bot:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/usr/local/app
+    env_file:
+      - .env
+    restart: always
+    command: uv run src/bot.py
