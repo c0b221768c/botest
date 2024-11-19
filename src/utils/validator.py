@@ -57,9 +57,12 @@ class DateValidator:
             return now + timedelta(minutes=30)
 
         patterns = [
-            (r"^(\d{1,2}):(\d{2})$", self.parse_time_only),
-            (r"^(\d{1,2})/(\d{1,2}) (\d{1,2}):(\d{2})$", self.parse_date_time),
-            (r"^(\d{4})/(\d{1,2})/(\d{1,2}) (\d{1,2}):(\d{2})$", self.parse_full_date),
+            (r"^(\d{1,2}):(\d{1,2})$", self.parse_time_only),
+            (r"^(\d{1,2})/(\d{1,2}) (\d{1,2}):(\d{1,2})$", self.parse_date_time),
+            (
+                r"^(\d{4})/(\d{1,2})/(\d{1,2}) (\d{1,2}):(\d{1,2})$",
+                self.parse_full_date,
+            ),
             (r"^\d+$", self.parse_minutes_later),
         ]
 
