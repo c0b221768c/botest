@@ -1,30 +1,27 @@
 import discord
-from cache.cache_manager import CacheManager
-from components.embed import CreateEmbed
-from components.views import CreateView
-from config.settings import settings
 from discord.ext import commands
-from utils import helpers
+
+from cache.cache_manager import CacheManager
+from components.embed import EmbedFactory
+from components.views import RecruitmentView
+from config.settings import settings
+from utils.helpers import generate_uuid
 from utils.validator import DateValidator, HeadcountValidator, ParticipantsValidator
 
-# Intents 設定
 intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
 intents.members = True
 
-# Bot 設定
 bot = commands.Bot(command_prefix="/", intents=intents)
 
 
-# Bot 起動時のイベント
 @bot.event
 async def on_ready():
     await bot.tree.sync()
     print(f"Bot is ready. Logged in as {bot.user}")
 
 
-# /joinus コマンド
 @bot.tree.command(
     name="joinus",
     description="Valorantのメンバー募集を行います。引数は任意で指定できます。",
@@ -41,22 +38,21 @@ async def joinus(
     date: str = None,
 ):
     try:
-        # 引数のバリデーション
+        # バリデーション
         headcount = HeadcountValidator(headcount).validate()
-        headcount = str(headcount)
-        participants = await ParticipantsValidator(participants, interaction).validate()
+        participants = set(
+            await ParticipantsValidator(participants, interaction).validate()
+        )
         date = DateValidator(date).validate()
 
-        # create & update cache
-        recruitment_id = helpers.generate_uuid()
+        # キャッシュ作成
+        recruitment_id = generate_uuid()
         cache_manager = CacheManager()
-        cache_manager.create_recruitment(recruitment_id, headcount, participants)
+        cache_manager.create_recruitment(recruitment_id, headcount, participants, date)
 
-        # create embed & view
-        embed = CreateEmbed(
-            cache_manager.get_recruitment_data(recruitment_id)
-        ).create_embed()
-        view = CreateView(cache_manager, recruitment_id)
+        # EmbedとView作成
+        embed = EmbedFactory(cache_manager.get_recruitment_data(recruitment_id)).build()
+        view = RecruitmentView(cache_manager, recruitment_id)
 
         await interaction.response.send_message(embed=embed, view=view)
     except ValueError as e:

@@ -1,62 +1,50 @@
 from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
-from components.embed import CreateEmbed
+from components.embed import EmbedFactory
 
 
-class JoinButton(Button):
-    def __init__(self, cache_manager, recruitment_id):
-        super().__init__(label="参加", style=ButtonStyle.green)
+class BaseButton(Button):
+    def __init__(self, label: str, style: ButtonStyle, cache_manager, recruitment_id):
+        super().__init__(label=label, style=style)
         self.recruitment_id = recruitment_id
         self.cache_manager = cache_manager
 
-    async def callback(self, interaction: Interaction):
-        user_id = interaction.user.id
-        update_cache = self.cache_manager.get_recruitment_data(self.recruitment_id)
+    async def update_message(self, interaction: Interaction):
+        cache_data = self.cache_manager.get_recruitment_data(self.recruitment_id)
+        if cache_data is None:
+            await interaction.response.send_message("ERROR: Recruitment not found.")
+            return
 
-        if update_cache is None:
-            await interaction.response.send_message("ERROR: Recruitment is not found.")
-
-        self.cache_manager.update_participant(
-            self.recruitment_id, user_id, is_participating=True
-        )
-        embed = CreateEmbed(update_cache).create_embed()
+        embed = EmbedFactory(cache_data).build()
         await interaction.response.edit_message(embed=embed, view=self.view)
 
 
-class LeaveButton(Button):
+class JoinButton(BaseButton):
     def __init__(self, cache_manager, recruitment_id):
-        super().__init__(label="不参加", style=ButtonStyle.red)
-        self.recruitment_id = recruitment_id
-        self.cache_manager = cache_manager
+        super().__init__("参加", ButtonStyle.green, cache_manager, recruitment_id)
 
     async def callback(self, interaction: Interaction):
         user_id = interaction.user.id
-        update_cache = self.cache_manager.get_recruitment_data(self.recruitment_id)
-
-        if update_cache is None:
-            await interaction.response.send_message("ERROR: Recruitment is not found.")
-
-        self.cache_manager.update_participant(
-            self.recruitment_id, user_id, is_participating=False
-        )
-        embed = CreateEmbed(update_cache).create_embed()
-        await interaction.response.edit_message(embed=embed, view=self.view)
+        self.cache_manager.update_participant(self.recruitment_id, user_id, True)
+        await self.update_message(interaction)
 
 
-class CancelButton(Button):
+class LeaveButton(BaseButton):
     def __init__(self, cache_manager, recruitment_id):
-        super().__init__(label="キャンセル", style=ButtonStyle.gray)
-        self.recruitment_id = recruitment_id
-        self.cache_manager = cache_manager
+        super().__init__("不参加", ButtonStyle.red, cache_manager, recruitment_id)
 
     async def callback(self, interaction: Interaction):
         user_id = interaction.user.id
-        update_cache = self.cache_manager.get_recruitment_data(self.recruitment_id)
+        self.cache_manager.update_participant(self.recruitment_id, user_id, False)
+        await self.update_message(interaction)
 
-        if update_cache is None:
-            await interaction.response.send_message("ERROR: Recruitment is not found.")
 
+class CancelButton(BaseButton):
+    def __init__(self, cache_manager, recruitment_id):
+        super().__init__("キャンセル", ButtonStyle.gray, cache_manager, recruitment_id)
+
+    async def callback(self, interaction: Interaction):
+        user_id = interaction.user.id
         self.cache_manager.cancel_participation(self.recruitment_id, user_id)
-        embed = CreateEmbed(update_cache).create_embed()
-        await interaction.response.edit_message(embed=embed, view=self.view)
+        await self.update_message(interaction)
